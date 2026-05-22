@@ -1,8 +1,7 @@
 {
     "version": 2,
     "framework": null,
-    "installCommand": "cd dharma-tech-os && composer install --no-dev --optimize-autoloader",
-    "buildCommand": "cd dharma-tech-os && npm install && npm run build",
+    "buildCommand": "npm install && npm run build",
     "functions": {
         "api/index.php": {
             "runtime": "vercel-php@0.7.3"
@@ -11,15 +10,15 @@
     "routes": [
         {
             "src": "/build/(.*)",
-            "dest": "/dharma-tech-os/public/build/$1"
+            "dest": "/public/build/$1"
         },
         {
             "src": "/css/(.*)",
-            "dest": "/dharma-tech-os/public/css/$1"
+            "dest": "/public/css/$1"
         },
         {
             "src": "/js/(.*)",
-            "dest": "/dharma-tech-os/public/js/$1"
+            "dest": "/public/js/$1"
         },
         {
             "src": "/(.*)",

@@ -1,4 +1,4 @@
 <?php
 
-// Entry point for Vercel serverless: forward to Laravel's public/index.php
-require __DIR__ . '/../dharma-tech-os/public/index.php';
+// Entry point for Vercel serverless: forward all requests to Laravel public/index.php
+require __DIR__ . '/../public/index.php';
