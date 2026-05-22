@@ -1,6 +1,8 @@
 {
     "version": 2,
     "framework": null,
+    "installCommand": "cd dharma-tech-os && composer install --no-dev --optimize-autoloader",
+    "buildCommand": "cd dharma-tech-os && npm install && npm run build",
     "functions": {
         "api/index.php": {
             "runtime": "vercel-php@0.7.3"
