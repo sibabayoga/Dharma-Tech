@@ -1,0 +1,18 @@
+# Python virtual environment
+env/
+__pycache__/
+*.pyc
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Laravel environment and database if desired (let's keep database for local execution but ignore laravel specific ones)
+dharma-tech-os/.env
+dharma-tech-os/vendor/
+dharma-tech-os/node_modules/
