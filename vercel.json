@@ -1,0 +1,27 @@
+{
+    "version": 2,
+    "framework": null,
+    "functions": {
+        "api/index.php": {
+            "runtime": "vercel-php@0.7.3"
+        }
+    },
+    "routes": [
+        {
+            "src": "/build/(.*)",
+            "dest": "/dharma-tech-os/public/build/$1"
+        },
+        {
+            "src": "/css/(.*)",
+            "dest": "/dharma-tech-os/public/css/$1"
+        },
+        {
+            "src": "/js/(.*)",
+            "dest": "/dharma-tech-os/public/js/$1"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/api/index.php"
+        }
+    ]
+}
