@@ -628,6 +628,7 @@ tbody td {
 
 /* ──────────────── FILE UPLOAD ────────────────────────────────── */
 .file-upload-area {
+    display: block;
     border: 2px dashed var(--cream-dark);
     border-radius: var(--radius);
     padding: 36px 24px;
@@ -645,7 +646,16 @@ tbody td {
 .file-upload-area .upload-icon { font-size: 2.5rem; margin-bottom: 10px; }
 .file-upload-area p { font-size: .88rem; color: var(--text-muted); }
 .file-upload-area strong { color: var(--green-bright); }
-.file-upload-area input[type="file"] { display: none; }
+.file-upload-area input[type="file"] { 
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    border: 0;
+}
 .file-name-display { margin-top: 10px; font-size: .82rem; font-weight: 600; color: var(--text-dark); }
 
 /* ──────────────── LOGIN PAGE ─────────────────────────────────── */
@@ -801,6 +811,8 @@ tbody td {
     margin-top: 5px;
     font-weight: 500;
 }
+
+.bottom-nav { display: none; }
 
 /* ──────────────── RESPONSIVE MOBILE ─────────────────────────── */
 @media (max-width: 900px) {

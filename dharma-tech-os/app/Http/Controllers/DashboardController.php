@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\PurchaseOrderMail;
+use App\Mail\SalesInvoiceMail;
+use Smalot\PdfParser\Parser as PdfParser;
 
 class DashboardController extends Controller
 {
@@ -169,12 +173,14 @@ class DashboardController extends Controller
                 'Status'        => 'PO Sent - Menunggu Invoice ⏳',
             ]);
 
-            // Panggil Python bot untuk kirim email PO
-            $python = 'python';
-            $script = base_path('../bot_email.py');
-            // Dipanggil sebagai proses background
-            $cmd = "{$python} -c \"import sys; sys.path.insert(0, r'" . base_path('..') . "'); from bot_email import kirim_email_po; kirim_email_po('dustintirza@gmail.com', 'Kelapa Sawit (TBS)', {$pesanan})\"";
-            @shell_exec($cmd . ' > NUL 2>&1');
+            // Kirim email PO via Laravel Mail (native PHP, no Python)
+            try {
+                Mail::to('dustintirza@gmail.com')
+                    ->send(new PurchaseOrderMail('Kelapa Sawit (TBS)', $pesanan));
+            } catch (\Exception $e) {
+                // Email gagal tidak menghentikan proses utama
+                \Log::warning('Gagal kirim email PO: ' . $e->getMessage());
+            }
 
             $msg .= " Stok TBS kritis! PO otomatis {$pesanan} Ton dikirim ke supplier.";
         }
@@ -198,25 +204,39 @@ class DashboardController extends Controller
     {
         $request->validate(['invoice_pdf' => 'required|file|mimes:pdf|max:10240']);
 
-        $file      = $request->file('invoice_pdf');
-        $tempPath  = $file->storeAs('temp', $file->getClientOriginalName());
-        $fullPath  = storage_path('app/private/' . $tempPath);
+        $file     = $request->file('invoice_pdf');
+        $tempPath = $file->storeAs('temp', $file->getClientOriginalName());
+        $fullPath = storage_path('app/private/' . $tempPath);
 
-        // Panggil Python untuk OCR
-        $python = 'python';
-        $script = base_path('../bot_ocr.py');
-        $output = shell_exec("{$python} -c \"import sys; sys.path.insert(0, r'" . base_path('..') . "'); from bot_ocr import ekstrak_data_invoice; ekstrak_data_invoice(r'{$fullPath}')\" 2>&1");
-
-        // Gunakan PyPDF2 via PHP (baca raw text menggunakan Python inline)
-        $raw_cmd = "{$python} -c \"import PyPDF2, re; r=PyPDF2.PdfReader(r'{$fullPath}'); t=r.pages[0].extract_text(); c=t.replace(' ',''); inv=re.search(r'INV-\d{4}-\d{3}',c); tag=re.search(r'Rp([\d\.]+)',c); print(inv.group() if inv else 'NONE'); print(tag.group(1).replace('.','') if tag else '0'); print('MATCH' if 'INV-' in c and 'KelapaSawit' in c and 'Ton' in t else 'NOMATCH')\"";
-        $result = shell_exec($raw_cmd . ' 2>&1');
+        // OCR via smalot/pdfparser (100% native PHP, no Python needed)
+        try {
+            $parser   = new PdfParser();
+            $pdf      = $parser->parseFile($fullPath);
+            $teks_asli = $pdf->getText();
+        } catch (\Exception $e) {
+            @unlink($fullPath);
+            return redirect()->route('finance')->with('error', '❌ Gagal membaca PDF. Pastikan file tidak terproteksi.');
+        }
 
         @unlink($fullPath);
 
-        $lines   = explode("\n", trim($result));
-        $inv_no  = trim($lines[0] ?? 'UNKNOWN');
-        $tagihan = floatval(trim($lines[1] ?? '0'));
-        $matched = trim($lines[2] ?? '') === 'MATCH';
+        // Bersihkan spasi untuk pencocokan (sama seperti logika Python sebelumnya)
+        $teks_bersih = preg_replace('/\s+/', '', $teks_asli);
+
+        // Ekstrak nomor Invoice (format: INV-XXXX-XXX)
+        preg_match('/INV-\d{4}-\d{3}/', $teks_bersih, $inv_match);
+        $inv_no = $inv_match[0] ?? 'NONE';
+
+        // Ekstrak nominal tagihan (format: RpXXX.XXX)
+        preg_match('/Rp([\d.]+)/', $teks_bersih, $tag_match);
+        $tagihan = floatval(str_replace('.', '', $tag_match[1] ?? '0'));
+
+        // 3-Way Matching: cek elemen wajib
+        $matched = (
+            str_contains($teks_bersih, 'INV-') &&
+            str_contains($teks_bersih, 'KelapaSawit') &&
+            str_contains($teks_asli, 'Ton')
+        );
 
         if ($matched && $inv_no !== 'NONE') {
             $existing = DB::table('Keuangan')->where('No_Invoice', $inv_no)->first();
@@ -293,10 +313,14 @@ class DashboardController extends Controller
             'Status'        => 'PENDING PAYMENT (Receivable) 📈',
         ]);
 
-        // Panggil Python bot kirim invoice ke klien
-        $python = 'python';
-        $cmd = "{$python} -c \"import sys; sys.path.insert(0, r'" . base_path('..') . "'); from bot_email import kirim_invoice_sales; kirim_invoice_sales('{$email_tujuan}', '{$nama_klien}', 'Crude Palm Oil (CPO)', {$request->tonase_jual}, {$total_tagihan})\"";
-        @shell_exec($cmd . ' > NUL 2>&1');
+        // Kirim email Invoice via Laravel Mail (native PHP, no Python)
+        try {
+            Mail::to($email_tujuan)
+                ->send(new SalesInvoiceMail($nama_klien, 'Crude Palm Oil (CPO)', $request->tonase_jual, $total_tagihan));
+        } catch (\Exception $e) {
+            // Email gagal tidak menghentikan proses utama
+            \Log::warning('Gagal kirim email Invoice: ' . $e->getMessage());
+        }
 
         return redirect()->route('sales')->with('success', "✅ Penjualan {$request->tonase_jual} Ton CPO ke {$nama_klien} berhasil! Invoice dikirim ke {$email_tujuan}.");
     }
